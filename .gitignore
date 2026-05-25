@@ -7,3 +7,5 @@ metrics/
 data/
 logs/
 output/
+.github/agents/
+.vscode
