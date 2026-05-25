@@ -6,3 +6,4 @@ metrics/
 **/*.pkl
 data/
 logs/
+output/

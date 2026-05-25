@@ -1,0 +1,27 @@
+name: adamx
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python=3.12
+  - pip
+
+  - numpy
+  - scipy
+  - matplotlib
+  - pyyaml
+  - requests
+  - sympy
+  - networkx
+  - pillow
+  - tqdm
+  - packaging
+
+  - pip:
+      - torch==2.11.0
+      - torchvision==0.26.0
+      - wandb
+      - pydantic
+      - gitpython
