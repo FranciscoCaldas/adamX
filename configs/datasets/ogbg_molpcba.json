@@ -1,0 +1,10 @@
+{
+  "dataset": "ogbg_molpcba",
+  "model": "gnn",
+  "epochs": 100,
+  "batch_size": 32,
+  "num_workers": 1,
+  "seed": 42,
+  "device": "auto",
+  "log_every_steps": 1
+}

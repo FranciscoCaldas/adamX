@@ -1,0 +1,8 @@
+{
+  "optimizer": "adam",
+  "lr": 0.001,
+  "eps": 0.00000001,
+  "betas": [0.9, 0.999],
+  "cc": 0.0,
+  "closure": false
+}

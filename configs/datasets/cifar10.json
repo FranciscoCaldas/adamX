@@ -1,0 +1,10 @@
+{
+  "dataset": "cifar10",
+  "model": "cifarnet",
+  "epochs": 100,
+  "batch_size": 64,
+  "num_workers": 0,
+  "seed": 42,
+  "device": "auto",
+  "log_every_steps": 1
+}

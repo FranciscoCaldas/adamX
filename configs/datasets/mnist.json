@@ -1,0 +1,10 @@
+{
+  "dataset": "mnist",
+  "model": "cnn",
+  "epochs": 100,
+  "batch_size": 64,
+  "num_workers": 1,
+  "seed": 8, 
+  "device": "auto",
+  "log_every_steps": 1
+}

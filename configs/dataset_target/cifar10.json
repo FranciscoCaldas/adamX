@@ -1,0 +1,4 @@
+{
+  "dataset": "cifar10",
+  "target_val_acc": 0.90
+}

@@ -1,0 +1,4 @@
+{
+  "dataset": "mnist",
+  "target_val_acc": 0.994
+}

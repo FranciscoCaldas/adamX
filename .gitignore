@@ -1,0 +1,8 @@
+metrics/losses_s62ylcg5.csv
+wandb/
+metrics/
+**/__pycache__
+**/*.pyc
+**/*.pkl
+data/
+logs/

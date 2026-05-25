@@ -1,0 +1,5 @@
+{
+  "dataset": "ogbg_molpcba",
+  "target_metric": "map",
+  "target_value": 0.28098
+}

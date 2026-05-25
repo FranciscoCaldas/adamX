@@ -1,0 +1,10 @@
+{
+  "optimizer": "adamx",
+  "lr": 0.001,
+  "eps": 0.00000001,
+  "betas": [0.9, 0.999],
+  "alpha": 0.99,
+  "lambda_exp": 1.0,
+  "cc": 0.0,
+  "closure": false
+}
