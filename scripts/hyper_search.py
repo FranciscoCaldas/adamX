@@ -4,10 +4,19 @@ import subprocess
 import sys
 from pathlib import Path
 
+from optimizers import AVAILABLE_OPTIMIZERS
+
+
 def main():
     parser = argparse.ArgumentParser(description="Hyperparameter Search")
     parser.add_argument("--dataset", "-d", default="mnist", help="Dataset name (-dc)")
-    parser.add_argument("--optimizer", "-o", default="adamx", help="Optimizer name (-oc)")
+    parser.add_argument(
+        "--optimizer",
+        "-o",
+        choices=AVAILABLE_OPTIMIZERS,
+        default="adamx",
+        help="Optimizer name (-oc)",
+    )
     
     # Default search space (can be modified here or extended via CLI)
     parser.add_argument("--lrs", nargs="+", type=float, default=[1e-4,5e-4,5e-3, 1e-3, 1e-2], help="Learning rates to test")

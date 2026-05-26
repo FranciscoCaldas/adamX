@@ -1,0 +1,6 @@
+{
+  "optimizer": "rmsprop",
+  "lr": 0.01,
+  "eps": 0.00000001,
+  "closure": false
+}

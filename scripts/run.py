@@ -5,7 +5,7 @@ import csv
 import json
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 import torch
 import torch.nn.functional as F
@@ -17,7 +17,7 @@ from datasets import (
     get_ogbg_molpcba_loaders,
 )
 from models import CifarNet, GNN, ImprovedCNN, SimpleMLP
-from optimizers import AdamX
+from optimizers import AVAILABLE_OPTIMIZERS, AdamX, Adan, Lion, Yogi
 from training import train
 from utils import get_device, set_seed
 from utils.metrics import accuracy
@@ -56,6 +56,10 @@ def build_optimizer(name: str, model: torch.nn.Module, args: argparse.Namespace)
         return torch.optim.Adam(
             model.parameters(), lr=args.lr, betas=args.betas, eps=args.eps
         )
+    if name == "adamw":
+        return torch.optim.AdamW(
+            model.parameters(), lr=args.lr, betas=args.betas, eps=args.eps
+        )
     if name == "adamx":
         return AdamX(
             model.parameters(),
@@ -67,10 +71,30 @@ def build_optimizer(name: str, model: torch.nn.Module, args: argparse.Namespace)
             cc=args.cc,
             track_stats=args.log_every_steps > 0,
         )
+    if name == "adan":
+        return Adan(model.parameters(), lr=args.lr, betas=args.betas, eps=args.eps)
+    if name == "adagrad":
+        return torch.optim.Adagrad(model.parameters(), lr=args.lr, eps=args.eps)
+    if name == "amsgrad":
+        return torch.optim.Adam(
+            model.parameters(), lr=args.lr, betas=args.betas, eps=args.eps, amsgrad=True
+        )
+    if name == "lion":
+        return Lion(model.parameters(), lr=args.lr, betas=args.betas)
+    if name == "radam":
+        return torch.optim.RAdam(
+            model.parameters(), lr=args.lr, betas=args.betas, eps=args.eps
+        )
+    if name == "rmsprop":
+        return torch.optim.RMSprop(
+            model.parameters(), lr=args.lr, momentum=args.momentum, eps=args.eps
+        )
     if name == "sgd":
         return torch.optim.SGD(
             model.parameters(), lr=args.lr, momentum=args.momentum
         )
+    if name == "yogi":
+        return Yogi(model.parameters(), lr=args.lr, betas=args.betas, eps=args.eps)
 
     raise ValueError(f"Unsupported optimizer: {name}")
 
@@ -116,6 +140,24 @@ def extract_dataset_overrides(raw_config: dict) -> tuple[dict, dict]:
 
 def arg_in_argv(flag: str) -> bool:
     return any(arg == flag or arg.startswith(flag + "=") for arg in sys.argv[1:])
+
+
+def config_matches_args(
+    args: argparse.Namespace, defaults: dict, ignore_keys: set[str]
+) -> bool:
+    for key, value in defaults.items():
+        if key in ignore_keys:
+            continue
+        if not hasattr(args, key):
+            return False
+        arg_value = getattr(args, key)
+        if isinstance(value, (list, tuple)) and isinstance(arg_value, (list, tuple)):
+            if list(value) != list(arg_value):
+                return False
+        else:
+            if value != arg_value:
+                return False
+    return True
 
 
 def list_config_names(config_dir: Path, fallback: list[str]) -> list[str]:
@@ -165,7 +207,7 @@ def parse_args() -> argparse.Namespace:
     )
     optimizer_config_names = list_config_names(
         optimizer_config_dir,
-        ["adam", "adamx", "sgd"],
+        AVAILABLE_OPTIMIZERS,
     )
 
     parser = argparse.ArgumentParser(description="Run AdamX benchmarks.")
@@ -201,7 +243,7 @@ def parse_args() -> argparse.Namespace:
         choices=["mlp", "cnn", "cifarnet", "gnn"],
         default="cnn",
     )
-    parser.add_argument("--optimizer", choices=["adam", "adamx", "sgd"], default="adamx")
+    parser.add_argument("--optimizer", choices=AVAILABLE_OPTIMIZERS, default="adamx")
     parser.add_argument("--epochs", type=int, default=100)
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--num-workers", type=int, default=1)
@@ -293,11 +335,13 @@ def parse_args() -> argparse.Namespace:
         raise ValueError("Unknown config keys: " + ", ".join(unknown))
     if "betas" in config:
         betas = config["betas"]
-        if not isinstance(betas, (list, tuple)) or len(betas) != 2:
-            raise ValueError("Config key 'betas' must be a list of two floats.")
+        if not isinstance(betas, (list, tuple)) or len(betas) not in {2, 3}:
+            raise ValueError("Config key 'betas' must be a list of two or three floats.")
     parser.set_defaults(**config)
 
-    return parser.parse_args()
+    args = parser.parse_args()
+    args._baseline = config_matches_args(args, config, {"seed"})
+    return args
 
 
 def resolve_device(choice: str) -> torch.device:
@@ -380,9 +424,13 @@ def main() -> None:
     repo_root = Path(__file__).resolve().parents[1]
     metric_name, target_val_metric = load_dataset_target(args.dataset, repo_root)
     metric_name = metric_name.lower()
+    baseline = getattr(args, "_baseline", False)
     wandb_config = vars(args).copy()
+    wandb_config.pop("_baseline", None)
     wandb_config["target_metric_name"] = metric_name
     wandb_config["target_val_metric"] = target_val_metric
+    if baseline:
+        wandb_config["baseline"] = True
 
     run = wandb.init(
         entity="mlspace",
@@ -394,6 +442,7 @@ def main() -> None:
     train_loader, val_loader, dataset_info = get_loaders(args)
 
     model = build_model(args.dataset, args.model, dataset_info)
+    model.to(device)
     optimizer = build_optimizer(args.optimizer, model, args)
 
     if args.optimizer == "adamx" and not args.closure:

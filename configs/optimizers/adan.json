@@ -1,0 +1,7 @@
+{
+  "optimizer": "adan",
+  "lr": 0.001,
+  "eps": 0.00000001,
+  "betas": [0.98, 0.92,0.99],
+  "closure": false
+}
