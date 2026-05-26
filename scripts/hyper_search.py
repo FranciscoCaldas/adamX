@@ -25,9 +25,10 @@ def main():
     runs = list(itertools.product(args.lrs, args.batches, betas_spaces, seeds))
     total_runs = len(runs)
     
-    print(f"Starting hyperparameter search! Total runs: {total_runs}")
+    print(f"Starting hyperparameter search! Total runs: {total_runs}",flush=True)
     
     for i, (lr, batch, betas, seed) in enumerate(runs, 1):
+
         cmd = [
             sys.executable, str(script_path),
             "-dc", args.dataset,
@@ -38,9 +39,9 @@ def main():
             "--seed", str(seed)
         ]
         
-        print(f"\n--- Run {i}/{total_runs} ---")
-        print(f"Parameters: lr={lr}, batch_size={batch}, betas={betas}, seed={seed}")
-        print(f"Command: {' '.join(cmd)}")
+        print(f"\n--- Run {i}/{total_runs} ---",flush=True)
+        print(f"Parameters: lr={lr}, batch_size={batch}, betas={betas}, seed={seed}",flush=True)
+        print(f"Command: {' '.join(cmd)}",flush=True)
         
         import os
         env = os.environ.copy()
@@ -51,8 +52,9 @@ def main():
             # We use check=True so if a run fails, it throws a traceback.
             # You can change check to False if you want it to continue on error.
             subprocess.run(cmd, check=True, env=env, cwd=root_dir)
+            #print(f"Run {i} completed successfully!",flush=True)
         except subprocess.CalledProcessError as e:
-            print(f"Run {i} failed with return code {e.returncode}. Skipping...")
+            print(f"Run {i} failed with return code {e.returncode}. Skipping...",flush=True)
 
 if __name__ == "__main__":
     main()

@@ -3,15 +3,15 @@
 #SBATCH -p phd
 #SBATCH --job-name=cexp_nc
 #SBATCH --output=output/out_hyper_%j.txt
-#SBATCH --gpus=2g.20g:1
+#SBATCH --gpus=1g.10g:1
 #SBATCH -c 4
 
 # SET MINICONDA_PATH HERE
 MINICONDA_PATH=/home/f.caldas/miniconda3/ #EX:/home/<USER>/miniconda3/ (without any leading or trailing spaces)
 
 
-dataset=${DATASET:-mnist}
-optimizer=${optimizer:-adam}
+dataset=${DATASET:-cifar10}
+optimizer=${optimizer:-sgd}
 NUM_RUNS=${NUM_RUNS:-10}
 export KMP_DUPLICATE_LIB_OK=TRUE
 if [ -z "$MINICONDA_PATH" ]

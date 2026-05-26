@@ -2,23 +2,13 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Debugger: adam_cifar10",
+            "name": "Attach to Debugpy",
             "type": "debugpy",
-            "request": "launch",
-            "python": "c:/Users/Francisco/anaconda3/envs/adamX/python.exe",
-           "program": "${workspaceFolder}/scripts/run.py",
-    "args": [
-        "-dc",
-        "cifar10"
-        "-oc"
-        "adam"
-
-    ],
-    "cwd": "${workspaceFolder}",
-    "env": {
-        "PYTHONPATH": "${workspaceFolder}"
-    },
-    "console": "integratedTerminal"
+            "request": "attach",
+            "connect": {
+                "host": "localhost",
+                "port": 5680
+            }
         }
     ]
 }
