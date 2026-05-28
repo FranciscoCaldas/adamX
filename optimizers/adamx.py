@@ -101,10 +101,10 @@ class AdamX(Optimizer):
                 )
                 state["prev_grad"].copy_(grad)
                 state["prev_mhat"].copy_(m_hat)
-                state["prev_vhat"].copy_(v_hat)
+                #state["prev_vhat"].copy_(v_hat)
 
                 v_tilde = torch.maximum(v_hat, state['prev_vhat'])
-                state["prev_vhat"].copy_(v_hat)
+                state["prev_vhat"].copy_(v_tilde)
                 prev_params = p.data.clone()
                 denom = v_tilde.sqrt().add(eps)
                 if self.track_stats:

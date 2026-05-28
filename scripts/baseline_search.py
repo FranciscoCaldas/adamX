@@ -38,7 +38,7 @@ def main() -> None:
         "--seeds",
         nargs="+",
         type=int,
-        default=[42, 123, 999],
+        default=[42, 422, 4222,42222,422222],
         help="Seeds to run.",
     )
     args = parser.parse_args()
