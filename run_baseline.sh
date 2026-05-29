@@ -19,5 +19,5 @@ else
 	source "$MINICONDA_PATH"etc/profile.d/conda.sh
 	conda activate /data/f.caldas/miniconda3/envs/adamx
 	echo "TASK: $TASK MODEL: $MODEL DATASET: $DATASET OPTIMIZER: $optimizer NUM_RUNS: $NUM_RUNS"
-	srun python scripts/baseline_search.py --dataset mnist --optimizers adamhd
+	srun python scripts/baseline_search.py --dataset cifar10 --optimizers rmsprop
 fi
