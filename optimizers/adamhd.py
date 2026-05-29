@@ -1,6 +1,6 @@
 import math
 import torch
-from torch.optim.optimizer import Optimizer
+from torch.optim import Optimizer
 
 
 class AdamHD(Optimizer):
