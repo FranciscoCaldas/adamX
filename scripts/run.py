@@ -17,7 +17,7 @@ from datasets import (
     get_ogbg_molpcba_loaders,
 )
 from models import CifarNet, GNN, ImprovedCNN, SimpleMLP
-from optimizers import AVAILABLE_OPTIMIZERS, AdamX, Adan, Lion, Yogi
+from optimizers import AVAILABLE_OPTIMIZERS, AdamX, Adan, Lion, Yogi, AdamHD
 from training import train
 from utils import get_device, set_seed
 from utils.metrics import accuracy
@@ -95,6 +95,9 @@ def build_optimizer(name: str, model: torch.nn.Module, args: argparse.Namespace)
         )
     if name == "yogi":
         return Yogi(model.parameters(), lr=args.lr, betas=args.betas, eps=args.eps)
+    
+    if name == "adamhd":
+        return AdamHD(model.parameters(), lr=args.lr, betas=args.betas, eps=args.eps)
 
     raise ValueError(f"Unsupported optimizer: {name}")
 
@@ -263,6 +266,11 @@ def parse_args() -> argparse.Namespace:
         help="Log metrics every N optimizer steps (0 disables).",
     )
     parser.add_argument(
+        "--no-target-val-metric",
+        action="store_true",
+        help="Disable target metric early stopping.",
+    )
+    parser.add_argument(
         "--closure",
         action="store_false",
         help="Whether to use optimizer closures (AdamX only).",
@@ -341,6 +349,25 @@ def parse_args() -> argparse.Namespace:
 
     args = parser.parse_args()
     args._baseline = config_matches_args(args, config, {"seed"})
+    relevant_flag_aliases = {
+        "model": ["--model"],
+        "epochs": ["--epochs"],
+        "batch_size": ["--batch-size"],
+        "lr": ["--lr"],
+        "betas": ["--betas"],
+        "eps": ["--eps"],
+        "alpha": ["--alpha"],
+        "lambda_exp": ["--lambda-exp"],
+        "cc": ["--cc"],
+        "momentum": ["--momentum"],
+        "log_every_steps": ["--log-every-steps"],
+        "no_target_val_metric": ["--no-target-val-metric"],
+    }
+    args._explicit_flags = {
+        name
+        for name, flags in relevant_flag_aliases.items()
+        if any(arg_in_argv(flag) for flag in flags)
+    }
     return args
 
 
@@ -386,10 +413,10 @@ def get_loaders(args: argparse.Namespace):
 
 
 def save_history(
-    history: dict, output_dir: Path, run_id: str, metric_name: str
+    history: dict, output_dir: Path, metrics_name: str, metric_name: str
 ) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
-    path = output_dir / f"losses_{run_id}.csv"
+    path = output_dir / f"losses_{metrics_name}.csv"
     train_metric_key = f"train_{metric_name}"
     val_metric_key = f"val_{metric_name}"
     with path.open("w", newline="") as handle:
@@ -415,6 +442,46 @@ def save_history(
     return path
 
 
+def format_flag_value(value: object) -> str:
+    if isinstance(value, float):
+        text = f"{value:g}"
+    elif isinstance(value, (list, tuple)):
+        text = "-".join(format_flag_value(item) for item in value)
+    else:
+        text = str(value)
+    return text.replace("/", "-").replace(" ", "")
+
+
+def build_metrics_name(args: argparse.Namespace) -> str:
+    flag_specs = [
+        ("model", "model"),
+        ("epochs", "ep"),
+        ("batch_size", "bs"),
+        ("lr", "lr"),
+        ("betas", "betas"),
+        ("eps", "eps"),
+        ("alpha", "alpha"),
+        ("lambda_exp", "lambda"),
+        ("cc", "cc"),
+        ("momentum", "mom"),
+        ("log_every_steps", "logstep"),
+    ]
+    always_include = {"epochs"}
+    explicit_flags = getattr(args, "_explicit_flags", set())
+    flag_parts: list[str] = []
+    for name, label in flag_specs:
+        if name not in always_include and name not in explicit_flags:
+            continue
+        value = getattr(args, name)
+        flag_parts.append(f"{label}{format_flag_value(value)}")
+    if getattr(args, "no_target_val_metric", False):
+        flag_parts.append("no_tvm")
+    if not flag_parts:
+        flag_parts.append("default")
+    flags = "-".join(flag_parts)
+    return f"{args.optimizer}_{args.dataset}_{flags}_seed{args.seed}"
+
+
 def main() -> None:
     args = parse_args()
 
@@ -424,14 +491,18 @@ def main() -> None:
     repo_root = Path(__file__).resolve().parents[1]
     metric_name, target_val_metric = load_dataset_target(args.dataset, repo_root)
     metric_name = metric_name.lower()
+    if args.no_target_val_metric:
+        target_val_metric = None
     baseline = getattr(args, "_baseline", False)
     wandb_config = vars(args).copy()
     wandb_config.pop("_baseline", None)
     wandb_config["target_metric_name"] = metric_name
     wandb_config["target_val_metric"] = target_val_metric
+    if target_val_metric is None:
+        wandb_config["target_val_metric_disabled"] = True
     if baseline:
         wandb_config["baseline"] = True
-
+        
     run = wandb.init(
         entity="mlspace",
         project="adamX",
@@ -499,7 +570,13 @@ def main() -> None:
         log_fn=log_metrics,
     )
 
-    metrics_path = save_history(history, repo_root / "metrics", run.id, metric_name)
+    metrics_name = build_metrics_name(args)
+    metrics_path = save_history(
+        history,
+        repo_root / "metrics",
+        metrics_name,
+        metric_name,
+    )
 
     final_train_loss = history["train_loss"][-1] if history["train_loss"] else 0.0
     final_val_loss = history["val_loss"][-1] if history["val_loss"] else 0.0
