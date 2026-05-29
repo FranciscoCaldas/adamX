@@ -9,8 +9,35 @@ from pathlib import Path
 from typing import Optional
 
 import matplotlib.pyplot as plt
+import seaborn as sns
+
+sns.set_theme(style="white", context="paper", font_scale=1.4)
 
 DATASETS = ["ogbg_molpcba", "cifar10", "mnist"]
+OPTIMIZER_ORDER = [
+    "adamx",
+    "yogi",
+    "sgd",
+    "rmsprop",
+    "radam",
+    "lion",
+    "amsgrad",
+    "adan",
+    "adamw",
+    "adam",
+    "adagrad",
+]
+BASE_COLORS = sns.color_palette("Set2", 9)
+EXTRA_COLORS = [
+    "#7A4F98",
+    "#7DEAECFF",
+    "#F2E391FF",
+]
+COLORS = list(BASE_COLORS) + EXTRA_COLORS
+OPTIMIZER_RANK = {name: idx for idx, name in enumerate(OPTIMIZER_ORDER)}
+OPTIMIZER_COLORS = {
+    name: COLORS[idx] for idx, name in enumerate(OPTIMIZER_ORDER)
+}
 
 
 @dataclass
@@ -162,27 +189,35 @@ def plot_series(
     if not series:
         raise SystemExit(f"No matching CSV files found for dataset '{dataset}'.")
 
-    fig, ax = plt.subplots(figsize=(9, 5))
+    fig, ax = plt.subplots(figsize=(8, 6), dpi=600)
     aggregated = aggregate_by_optimizer(series)
+    aggregated.sort(
+        key=lambda item: (
+            OPTIMIZER_RANK.get(item.optimizer, len(OPTIMIZER_RANK)),
+            item.optimizer,
+        )
+    )
     for run in aggregated:
+        color = OPTIMIZER_COLORS.get(run.optimizer)
+        linewidth = 2.6 if run.optimizer == "adamx" else 1.8
         ax.plot(
             run.epochs,
             run.train_loss,
-            linewidth=1.8,
-            alpha=0.85,
+            linewidth=linewidth,
             label=run.optimizer,
+            color=color,
         )
 
     ax.set_xlabel("Epoch")
     ax.set_ylabel("Train loss")
     ax.set_yscale("log")
-    ax.grid(True, linestyle="--", linewidth=0.5, alpha=0.4)
-    if legend or len(series) <= 30:
-        ax.legend(fontsize=8, frameon=True, edgecolor="black")
+    ax.legend(frameon=True, edgecolor="black")
+
+    sns.despine()
 
     fig.tight_layout()
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path, dpi=200)
+    fig.savefig(output_path, bbox_inches="tight")
     if show:
         plt.show()
     plt.close(fig)
