@@ -268,7 +268,7 @@ def main() -> None:
     parser.add_argument(
         "--dataset",
         type=str,
-        default="mnist",
+        default="cifar10",
         choices=DATASETS,
         help="Dataset name to plot.",
     )
