@@ -10,6 +10,7 @@ from typing import Optional
 
 import matplotlib.pyplot as plt
 import seaborn as sns
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes, mark_inset
 
 sns.set_theme(style="white", context="paper", font_scale=1.4)
 
@@ -27,7 +28,7 @@ OPTIMIZER_ORDER = [
     "adam",
     "adagrad",
 ]
-BASE_COLORS = sns.color_palette("Set2", 9)
+BASE_COLORS = sns.color_palette("Set2", 8)
 EXTRA_COLORS = [
     "#7A4F98",
     "#7DEAECFF",
@@ -38,6 +39,11 @@ OPTIMIZER_RANK = {name: idx for idx, name in enumerate(OPTIMIZER_ORDER)}
 OPTIMIZER_COLORS = {
     name: COLORS[idx] for idx, name in enumerate(OPTIMIZER_ORDER)
 }
+INSET_X_RANGE = (40, 80)
+INSET_Y_RANGE = (2e-3, 1e-2)
+INSET_HIGHLIGHT = {"amsgrad", "adamx","adan"}
+INSET_ALPHA = 0.5
+INSET_LINEWIDTH = 1.4
 
 
 @dataclass
@@ -221,6 +227,7 @@ def plot_series(
     output_path: Path,
     show: bool,
     legend: bool,
+    show_inset: bool,
 ) -> list[OptimizerSeries]:
     if not series:
         raise SystemExit(f"No matching CSV files found for dataset '{dataset}'.")
@@ -239,6 +246,24 @@ def plot_series(
             color=color,
         )
 
+    if show_inset:
+        axins = inset_axes(ax, width="40%", height="30%", loc="lower left")
+        for run in aggregated:
+            color = OPTIMIZER_COLORS.get(run.optimizer)
+            if run.optimizer in INSET_HIGHLIGHT:
+                inset_alpha = 1.0
+                inset_linewidth = 2.6 if run.optimizer == "adamx" else 1.8
+            else:
+                inset_alpha = INSET_ALPHA
+                inset_linewidth = INSET_LINEWIDTH
+            axins.plot(
+                run.epochs,
+                run.train_loss,
+                linewidth=inset_linewidth,
+                color=color,
+                alpha=inset_alpha,
+            )
+
     ax.set_xlabel("Epoch")
     ax.set_ylabel("Train loss")
     ax.set_yscale("log")
@@ -246,6 +271,28 @@ def plot_series(
 
     sns.despine()
 
+    if show_inset:
+        axins.set_xlim(*INSET_X_RANGE)
+        axins.set_ylim(*INSET_Y_RANGE)
+        axins.set_yscale("log")
+        mark_inset(ax, axins, loc1=2, loc2=4, fc="none", ec="black", lw=0.8)
+
+        import matplotlib.ticker as mticker
+
+        axins.yaxis.set_major_locator(mticker.NullLocator())
+        axins.yaxis.set_minor_locator(mticker.NullLocator())
+        axins.xaxis.set_major_locator(mticker.NullLocator())
+        axins.xaxis.set_minor_locator(mticker.NullLocator())
+        axins.spines["top"].set_visible(True)
+        axins.spines["right"].set_visible(True)
+        for spine in axins.spines.values():
+            spine.set_edgecolor("black")
+
+        axins.set_xticklabels([])
+        axins.set_yticklabels([])
+        axins.set_xticks([])
+        axins.set_yticks([])
+        axins.tick_params(labelleft=False, labelbottom=False)
     fig.tight_layout()
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, bbox_inches="tight")
@@ -300,6 +347,11 @@ def main() -> None:
         action="store_true",
         help="Force legends even when there are many runs.",
     )
+    parser.add_argument(
+        "--no-inset",
+        action="store_true",
+        help="Disable the inset zoom box.",
+    )
     args = parser.parse_args()
 
     metrics_dir = args.metrics_dir
@@ -327,7 +379,12 @@ def main() -> None:
 
     series = collect_series(metrics_dir, args.dataset, args.seed)
     aggregated = plot_series(
-        series, args.dataset, output_path, show=args.show, legend=args.legend
+        series,
+        args.dataset,
+        output_path,
+        show=args.show,
+        legend=args.legend,
+        show_inset=not args.no_inset,
     )
     print_final_train_loss(aggregated)
     write_final_train_loss(aggregated, summary_out)
