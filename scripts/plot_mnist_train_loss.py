@@ -27,7 +27,7 @@ OPTIMIZER_ORDER = [
     "adam",
     "adagrad",
 ]
-BASE_COLORS = sns.color_palette("Set2", 9)
+BASE_COLORS = sns.color_palette("Set2", 8)
 EXTRA_COLORS = [
     "#7A4F98",
     "#7DEAECFF",
