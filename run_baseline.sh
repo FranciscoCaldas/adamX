@@ -7,7 +7,7 @@
 #SBATCH -c 4
 
 # SET MINICONDA_PATH HERE
-MINICONDA_PATH=/home/f.caldas/miniconda3/ #EX:/home/<USER>/miniconda3/ (without any leading or trailing spaces)
+MINICONDA_PATH=/data/f.caldas/miniconda3/ #EX:/home/<USER>/miniconda3/ (without any leading or trailing spaces)
 
 
 export KMP_DUPLICATE_LIB_OK=TRUE
